@@ -30,10 +30,11 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .spin { animation: spin .8s linear infinite; }
   @media print {
-    body { background: white; }
+    body { background: white !important; color: black !important; }
     header, #formCadColab, .no-print { display: none !important; }
     #abaAdmin { display: block !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
-    table { font-size: 10px !important; }
+    table { font-size: 11px !important; width: 100% !important; border-collapse: collapse !important; }
+    th, td { border: 1px solid #cbd5e1 !important; padding: 6px !important; }
   }
 </style>
 </head>
@@ -108,14 +109,14 @@
     </div>
   </section>
 
-  <!-- Cronômetro de Jornada Ativa -->
+  <!-- Cronômetro e Status da Jornada Atual -->
   <section id="cardCronometro" class="hidden bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-2xl p-4 shadow-md flex items-center justify-between">
     <div>
-      <p class="text-[11px] text-blue-200 uppercase tracking-wider font-bold">Tempo de Jornada Ativa</p>
+      <p id="statusJornadaLabel" class="text-[11px] text-blue-200 uppercase tracking-wider font-bold">Jornada Ativa</p>
       <p id="cronometroTempo" class="tnum text-2xl font-black mt-0.5">00:00:00</p>
     </div>
     <div class="text-right">
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/20 border border-emerald-400 text-emerald-300 rounded-full text-xs font-semibold">
+      <span id="badgeStatusTrabalho" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/20 border border-emerald-400 text-emerald-300 rounded-full text-xs font-semibold">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Trabalhando
       </span>
     </div>
@@ -153,6 +154,7 @@
     <button id="btnGps" class="hidden text-xs font-bold text-brand px-2 py-1 rounded-lg">Atualizar</button>
   </section>
 
+  <!-- Botões de Registro (Todos Independentes e Livres) -->
   <section class="space-y-3">
     <div class="grid grid-cols-2 gap-3">
       <button id="btnEntrada" onclick="registrarPonto('Entrada')" class="h-14 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex flex-col items-center justify-center gap-1 disabled:bg-slate-200 disabled:text-slate-400 shadow">
@@ -179,6 +181,17 @@
 <!-- ABA 2: PAINEL DA GESTÃO (ADMIN) -->
 <main id="abaAdmin" class="hidden w-full max-w-4xl px-4 py-6 space-y-6">
   
+  <!-- Status em Tempo Real da Equipe -->
+  <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+    <div class="flex items-center justify-between border-b pb-3">
+      <h2 class="text-base font-bold text-slate-800"><i class="fa-solid fa-user-clock text-brand mr-2"></i>Equipe no Ponto Agora (Tempo Real)</h2>
+      <span class="text-xs px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-full animate-pulse">● Ao Vivo</span>
+    </div>
+    <div id="statusEquipeAoVivo" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+      <p class="text-xs text-slate-400 p-2">A carregar status da equipe...</p>
+    </div>
+  </div>
+
   <div id="formCadColab" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
     <div class="flex items-center justify-between border-b pb-3">
       <div>
@@ -318,7 +331,7 @@ $("formSenha").addEventListener("submit", e => {
     carregarColaboradoresAdmin();
     carregarDadosAdmin();
   } else {
-    $("erroSenha").classList.add("hidden");
+    $("erroSenha").classList.remove("hidden");
   }
 });
 
@@ -351,10 +364,8 @@ function tick() {
 }
 tick(); setInterval(tick, 1000);
 
-/* ---- Gerenciamento Híbrido (Firebase + LocalStorage Fallback) ---- */
 async function obterColaboradores() {
   let lista = [];
-  // Tenta carregar do localStorage primeiro para garantir velocidade e estabilidade
   try {
     const local = localStorage.getItem("mg_colab_lista");
     if (local) lista = JSON.parse(local);
@@ -370,15 +381,14 @@ async function obterColaboradores() {
         });
         localStorage.setItem("mg_colab_lista", JSON.stringify(lista));
       }
-    } catch (err) {
-      console.warn("Usando cache local de colaboradores devido a restrição do Firestore:", err);
-    }
+    } catch (err) {}
   }
   return lista;
 }
 
 async function carregarColaboradoresPublico() {
   const select = $('selectColaborador');
+  const atual = select.value;
   select.innerHTML = '<option value="">-- Selecione seu nome --</option>';
   const lista = await obterColaboradores();
   lista.forEach(c => {
@@ -387,6 +397,7 @@ async function carregarColaboradoresPublico() {
     opt.textContent = `${c.nome} (${c.cargo})`;
     select.appendChild(opt);
   });
+  if (atual) select.value = atual;
 }
 carregarColaboradoresPublico();
 
@@ -423,10 +434,8 @@ $("formCadastroFunc").addEventListener("submit", async e => {
   const nome = $('novoNome').value.trim();
   const cargo = $('novoCargo').value.trim();
   const novoId = 'colab_' + Date.now();
-
   const novoColab = { id: novoId, nome, cargo };
 
-  // Salva no LocalStorage imediatamente
   try {
     let lista = [];
     const local = localStorage.getItem("mg_colab_lista");
@@ -435,13 +444,10 @@ $("formCadastroFunc").addEventListener("submit", async e => {
     localStorage.setItem("mg_colab_lista", JSON.stringify(lista));
   } catch(e) {}
 
-  // Tenta salvar no Firebase em segundo plano
   if (db) {
     try {
       await addDoc(collection(db, "colaboradores"), { nome, cargo, criadoEm: serverTimestamp() });
-    } catch (err) {
-      console.log("Salvo apenas localmente devido às regras do Firebase.");
-    }
+    } catch (err) {}
   }
 
   alert("Colaborador cadastrado com sucesso!");
@@ -452,8 +458,6 @@ $("formCadastroFunc").addEventListener("submit", async e => {
 
 window.excluirColaborador = async function(id) {
   if (!confirm("Tem certeza que deseja excluir este colaborador?")) return;
-  
-  // Remove do LocalStorage
   try {
     let lista = [];
     const local = localStorage.getItem("mg_colab_lista");
@@ -464,9 +468,7 @@ window.excluirColaborador = async function(id) {
   } catch(e) {}
 
   if (db) {
-    try {
-      await deleteDoc(doc(db, "colaboradores", id));
-    } catch(e) {}
+    try { await deleteDoc(doc(db, "colaboradores", id)); } catch(e) {}
   }
 
   carregarColaboradoresPublico();
@@ -558,6 +560,7 @@ function atualizarBotoes() {
   const colabSelecionado = $('selectColaborador').value;
   const pronto = !!colabSelecionado && !!foto && gpsOk && configurado;
   
+  // Todos os botões ficam totalmente livres e acessíveis independentemente
   $('btnEntrada').disabled = !pronto;
   $('btnAlmoco').disabled = !pronto;
   $('btnRetorno').disabled = !pronto;
@@ -567,11 +570,15 @@ function atualizarBotoes() {
     !foto ? "Tire a foto facial para liberar os botões." :
     !gpsOk ? "Aguardando sinal do GPS..." : "";
 }
-$('selectColaborador').addEventListener("change", atualizarBotoes);
+$('selectColaborador').addEventListener("change", async () => {
+  atualizarBotoes();
+  await verificarEstadoColaborador();
+});
 
 let cronometroInterval = null;
-function iniciarCronometro(horarioEntrada) {
+function iniciarCronometro(horarioEntrada, textoStatus = "Jornada Ativa") {
   $('cardCronometro').classList.remove("hidden");
+  $('statusJornadaLabel').textContent = textoStatus;
   if (cronometroInterval) clearInterval(cronometroInterval);
   
   cronometroInterval = setInterval(() => {
@@ -585,6 +592,38 @@ function iniciarCronometro(horarioEntrada) {
     
     $('cronometroTempo').textContent = `${horas}:${minutos}:${segundos}`;
   }, 1000);
+}
+
+// Verifica o último estado do funcionário ao selecionar o nome (Persistência ao voltar)
+async function verificarEstadoColaborador() {
+  const colabId = $('selectColaborador').value;
+  if (!colabId || !db) {
+    $('cardCronometro').classList.add("hidden");
+    if (cronometroInterval) clearInterval(cronometroInterval);
+    return;
+  }
+
+  try {
+    const q = query(collection(db, "pontos"), orderBy("timestamp", "desc"));
+    const snap = await getDocs(q);
+    let ultimaEntrada = null;
+    let ultimoTipo = null;
+
+    snap.forEach(docSnap => {
+      const p = docSnap.data();
+      if (p.colaboradorId === colabId && !ultimaEntrada && p.timestamp) {
+        ultimaEntrada = p.timestamp.toDate();
+        ultimoTipo = p.tipo;
+      }
+    });
+
+    if (ultimaEntrada && (ultimoTipo === 'Entrada' || ultimoTipo === 'Retorno Almoço')) {
+      iniciarCronometro(ultimaEntrada, `Em Andamento (${ultimoTipo})`);
+    } else {
+      $('cardCronometro').classList.add("hidden");
+      if (cronometroInterval) clearInterval(cronometroInterval);
+    }
+  } catch(e) {}
 }
 
 window.registrarPonto = async function(tipo) {
@@ -602,6 +641,7 @@ window.registrarPonto = async function(tipo) {
   btnEl.innerHTML = `<i class="fa-solid fa-spinner spin text-lg"></i> Registrando...`;
 
   try {
+    const dataHoraAtual = new Date();
     await addDoc(collection(db, "pontos"), {
       colaboradorId,
       nomeColaborador: colaboradorNome,
@@ -617,9 +657,9 @@ window.registrarPonto = async function(tipo) {
     msgBox.textContent = `✓ Ponto de "${tipo}" registrado com sucesso para ${colaboradorNome}!`;
     msgBox.className = "rounded-2xl p-4 text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 block";
     
-    if (tipo === 'Entrada') {
-      iniciarCronometro(new Date());
-    } else if (tipo === 'Saída') {
+    if (tipo === 'Entrada' || tipo === 'Retorno Almoço') {
+      iniciarCronometro(dataHoraAtual, `Em Andamento (${tipo})`);
+    } else {
       if (cronometroInterval) clearInterval(cronometroInterval);
       $('cardCronometro').classList.add("hidden");
     }
@@ -643,6 +683,7 @@ window.registrarPonto = async function(tipo) {
 async function carregarDadosAdmin() {
   const tbodyPontos = $('tabelaPontos');
   const tbodyResumo = $('tabelaResumo');
+  const statusEquipeDiv = $('statusEquipeAoVivo');
   if (!db) return;
 
   try {
@@ -650,13 +691,17 @@ async function carregarDadosAdmin() {
     const snap = await getDocs(q);
     
     tbodyPontos.innerHTML = "";
+    statusEquipeDiv.innerHTML = "";
+
     if (snap.empty) {
       tbodyPontos.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum ponto registrado.</td></tr>`;
       tbodyResumo.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400">Sem dados para cálculo.</td></tr>`;
+      statusEquipeDiv.innerHTML = `<p class="text-xs text-slate-400 p-2">Nenhum colaborador com ponto ativo no momento.</p>`;
       return;
     }
 
     const registrosPorColab = {};
+    const ultimosStatusColab = {};
 
     snap.forEach(docSnap => {
       const p = docSnap.data();
@@ -666,6 +711,10 @@ async function carregarDadosAdmin() {
         if (!registrosPorColab[p.colaboradorId]) {
           registrosPorColab[p.colaboradorId] = { nome: p.nomeColaborador, entradas: [], saidas: [] };
         }
+        if (!ultimosStatusColab[p.colaboradorId]) {
+          ultimosStatusColab[p.colaboradorId] = { tipo: p.tipo, hora: dataFmt };
+        }
+
         const dataObj = p.timestamp.toDate();
         if (p.tipo === 'Entrada' || p.tipo === 'Retorno Almoço') {
           registrosPorColab[p.colaboradorId].entradas.push(dataObj);
@@ -685,6 +734,32 @@ async function carregarDadosAdmin() {
       `;
       tbodyPontos.appendChild(tr);
     });
+
+    // Renderizar Painel em Tempo Real de quem está no ponto
+    let ativosCount = 0;
+    Object.keys(ultimosStatusColab).forEach(id => {
+      const st = ultimosStatusColab[id];
+      const trabalhando = st.tipo === 'Entrada' || st.tipo === 'Retorno Almoço';
+      if (trabalhando) ativosCount++;
+
+      const badgeCor = trabalhando ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200';
+      const textoStatus = trabalhando ? 'Trabalhando Agora' : 'Expediente Encerrado';
+
+      const card = document.createElement("div");
+      card.className = `p-3 rounded-xl border ${badgeCor} flex items-center justify-between`;
+      card.innerHTML = `
+        <div>
+          <p class="font-bold text-xs text-slate-800">${id}</p>
+          <p class="text-[11px] text-slate-500">Último: <b>${st.tipo}</b> (${st.hora})</p>
+        </div>
+        <span class="text-[10px] font-bold px-2 py-1 rounded-full ${trabalhando ? 'bg-emerald-600 text-white' : 'bg-slate-400 text-white'}">${textoStatus}</span>
+      `;
+      statusEquipeDiv.appendChild(card);
+    });
+
+    if (ativosCount === 0) {
+      statusEquipeDiv.innerHTML = `<p class="text-xs text-slate-500 p-2">Nenhum funcionário com ponto ativo no momento.</p>`;
+    }
 
     tbodyResumo.innerHTML = "";
     Object.keys(registrosPorColab).forEach(id => {
