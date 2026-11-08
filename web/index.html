@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1E3A8A">
-<title>Óticas M&G • Sistema de Ponto & Gestão</title>
+<title>Óticas M&G • Sistema de Ponto Corporativo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -39,7 +39,7 @@
 </head>
 <body class="font-sans text-slate-900 min-h-screen flex flex-col items-center">
 
-<!-- Cabeçalho -->
+<!-- Cabeçalho Principal -->
 <header class="w-full bg-brand text-white shadow-md no-print">
   <div class="max-w-4xl mx-auto px-5 py-4 flex items-center justify-between">
     <div class="flex items-center gap-3">
@@ -48,7 +48,7 @@
       </div>
       <div>
         <h1 class="text-lg font-extrabold leading-tight">Óticas M&G</h1>
-        <p class="text-xs text-blue-200">Controle de Ponto Inteligente</p>
+        <p class="text-xs text-blue-200">Sistema Corporativo de Ponto</p>
       </div>
     </div>
     <div class="text-right">
@@ -60,7 +60,7 @@
   <!-- Navegação por Abas -->
   <div class="max-w-4xl mx-auto px-4 flex border-t border-blue-800/60">
     <button id="tabBtnPonto" onclick="mudarAba('ponto')" class="flex-1 py-3 text-center text-sm font-bold border-b-4 border-white text-white flex items-center justify-center gap-2 transition">
-      <i class="fa-solid fa-clock"></i> Bater Ponto
+      <i class="fa-solid fa-mobile-screen-button"></i> Registrar Ponto
     </button>
     <button id="tabBtnAdmin" onclick="tentarAbrirAdmin()" class="flex-1 py-3 text-center text-sm font-bold border-b-4 border-transparent text-blue-200 hover:text-white flex items-center justify-center gap-2 transition">
       <i class="fa-solid fa-lock" id="lockIcon"></i> Painel da Gestão
@@ -68,18 +68,18 @@
   </div>
 </header>
 
-<!-- MODAL DE SENHA PARA O GESTOR -->
+<!-- MODAL DE SENHA DO GESTOR -->
 <div id="modalSenha" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
   <div class="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
     <div class="text-center">
       <div class="w-12 h-12 bg-blue-50 text-brand rounded-full mx-auto flex items-center justify-center text-xl font-bold mb-2">
         <i class="fa-solid fa-shield-halved"></i>
       </div>
-      <h3 class="text-lg font-bold text-slate-900">Área Restrita do Gestor</h3>
-      <p class="text-xs text-slate-500 mt-1">Digite a senha de acesso gerencial para continuar.</p>
+      <h3 class="text-lg font-bold text-slate-900">Acesso Restrito ao Gestor</h3>
+      <p class="text-xs text-slate-500 mt-1">Digite a senha gerencial (padrão: 123456)</p>
     </div>
     <form id="formSenha" class="space-y-3">
-      <input type="password" id="inputSenhaAdmin" required placeholder="Senha (ex: 123456)"
+      <input type="password" id="inputSenhaAdmin" required placeholder="Digite 123456"
         class="w-full rounded-xl border border-slate-300 px-4 py-3 text-center tracking-widest text-lg font-bold focus:outline-none focus:border-brand">
       <p id="erroSenha" class="text-xs text-red-600 text-center hidden">Senha incorreta!</p>
       <div class="grid grid-cols-2 gap-2 pt-2">
@@ -90,36 +90,38 @@
   </div>
 </div>
 
-<!-- ABA 1: BATER PONTO (FUNCIONÁRIO) -->
+<!-- ABA 1: REGISTRO DE PONTO (FUNCIONÁRIO) -->
 <main id="abaPonto" class="w-full max-w-md px-5 py-5 space-y-5">
   <div id="cfgWarn" class="hidden rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-sm p-3">
-    Firebase não configurado no código.
+    Firebase não configurado.
   </div>
 
+  <!-- Seleção do Funcionário -->
   <section class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
     <div class="flex items-center justify-between">
-      <p class="font-bold text-slate-800">Identificação do Colaborador</p>
-      <span id="statusEscala" class="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">Escala: 08h-17:30</span>
+      <p class="font-bold text-slate-800">Colaborador</p>
+      <span id="statusEscala" class="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">Escala: 08h-17:30</span>
     </div>
     <div>
-      <label class="block text-xs font-semibold text-slate-500 mb-1">Selecione seu nome na lista:</label>
-      <select id="selectColaborador" class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base font-medium bg-white focus:outline-none focus:border-brand">
-        <option value="">-- Selecione o funcionário --</option>
+      <select id="selectColaborador" class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm font-semibold bg-white focus:outline-none focus:border-brand">
+        <option value="">-- Selecione seu nome --</option>
       </select>
     </div>
   </section>
 
+  <!-- Validação de Foto (Face ID) -->
   <section class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
     <div class="flex items-center justify-between mb-4">
-      <p class="font-bold text-slate-800">Foto de Validação (Face ID)</p>
-      <span id="camChip" class="text-xs font-bold rounded-full px-2.5 py-1 bg-slate-100 text-slate-600">Câmera desligada</span>
+      <p class="font-bold text-slate-800">Validação Facial (Face ID)</p>
+      <span id="camChip" class="text-xs font-bold rounded-full px-2.5 py-1 bg-slate-100 text-slate-600">Câmera pronta</span>
     </div>
     <div class="px-3">
-      <div id="lens" class="lens lens-ring mx-auto max-w-[240px]">
+      <div id="lens" class="lens lens-ring mx-auto max-w-[230px]">
         <video id="video" autoplay playsinline muted class="hidden"></video>
         <img id="preview" alt="Foto capturada" class="hidden">
         <div id="camEmpty" class="absolute inset-0 grid place-items-center text-center text-slate-300 text-xs px-6">
-          Ative a câmera para validação presencial.
+          <i class="fa-solid fa-camera text-3xl mb-1 text-slate-400"></i>
+          Clique abaixo para abrir a câmera presencial.
         </div>
       </div>
     </div>
@@ -131,19 +133,21 @@
     </div>
   </section>
 
+  <!-- GPS de Precisão -->
   <section class="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
     <span id="gpsDot" class="h-3 w-3 rounded-full bg-slate-300 shrink-0"></span>
     <div class="flex-1 min-w-0">
-      <p id="gpsTitle" class="font-bold text-sm">GPS de Alta Precisão</p>
+      <p id="gpsTitle" class="font-bold text-sm">GPS de Localização</p>
       <p id="gpsSub" class="text-xs text-slate-500 truncate">Verificando coordenadas...</p>
     </div>
     <button id="btnGps" class="hidden text-xs font-bold text-brand px-2 py-1 rounded-lg">Atualizar</button>
   </section>
 
+  <!-- Botões de Registro de Jornada -->
   <section class="space-y-3">
     <div class="grid grid-cols-2 gap-3">
       <button id="btnEntrada" onclick="registrarPonto('Entrada')" class="h-14 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex flex-col items-center justify-center gap-1 disabled:bg-slate-200 disabled:text-slate-400 shadow">
-        <i class="fa-solid fa-sign-in-alt text-base"></i> 1. ENTRADA
+        <i class="fa-solid fa-right-to-bracket text-base"></i> 1. ENTRADA
       </button>
       <button id="btnAlmoco" onclick="registrarPonto('Saída Almoço')" class="h-14 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs flex flex-col items-center justify-center gap-1 disabled:bg-slate-200 disabled:text-slate-400 shadow">
         <i class="fa-solid fa-utensils text-base"></i> 2. SAÍDA ALMOÇO
@@ -154,7 +158,7 @@
         <i class="fa-solid fa-rotate-left text-base"></i> 3. VOLTA ALMOÇO
       </button>
       <button id="btnSaida" onclick="registrarPonto('Saída')" class="h-14 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs flex flex-col items-center justify-center gap-1 disabled:bg-slate-200 disabled:text-slate-400 shadow">
-        <i class="fa-solid fa-sign-out-alt text-base"></i> 4. SAÍDA FINAL
+        <i class="fa-solid fa-right-from-bracket text-base"></i> 4. SAÍDA FINAL
       </button>
     </div>
     <p id="hint" class="text-center text-xs text-slate-500 pt-1"></p>
@@ -163,24 +167,24 @@
   <div id="msg" role="status" aria-live="polite" class="hidden rounded-2xl p-4 text-xs font-bold text-center"></div>
 </main>
 
-<!-- ABA 2: PAINEL DE GESTÃO (ADMIN) -->
+<!-- ABA 2: PAINEL DA GESTÃO (ADMIN) -->
 <main id="abaAdmin" class="hidden w-full max-w-4xl px-4 py-6 space-y-6">
   
   <!-- Cadastro de Funcionários -->
   <div id="formCadColab" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
     <div class="flex items-center justify-between border-b pb-3">
       <div>
-        <h2 class="text-base font-bold text-slate-800"><i class="fa-solid fa-users-gear text-brand mr-2"></i>Gestão de Colaboradores</h2>
-        <p class="text-xs text-slate-500">Cadastre ou remova funcionários que aparecem para bater ponto.</p>
+        <h2 class="text-base font-bold text-slate-800"><i class="fa-solid fa-user-gear text-brand mr-2"></i>Cadastrar Colaborador</h2>
+        <p class="text-xs text-slate-500">Adicione funcionários para aparecerem na lista de batida de ponto.</p>
       </div>
       <button onclick="bloquearAdmin()" class="text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl transition">
-        <i class="fa-solid fa-lock mr-1"></i> Bloquear Painel
+        <i class="fa-solid fa-lock mr-1"></i> Sair do Painel
       </button>
     </div>
 
     <form id="formCadastroFunc" class="grid grid-cols-1 md:grid-cols-3 gap-3">
       <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">ID ou Matrícula</label>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">ID / Matrícula</label>
         <input type="text" id="novoId" required placeholder="ex: carlos_silva" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
       </div>
       <div>
@@ -189,46 +193,47 @@
       </div>
       <div>
         <label class="block text-xs font-semibold text-slate-600 mb-1">Cargo / Função</label>
-        <input type="text" id="novoCargo" required placeholder="ex: Atendente / Motoboy" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+        <input type="text" id="novoCargo" required placeholder="ex: Motoboy / Loja" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
       </div>
       <div class="md:col-span-3 flex justify-end">
         <button type="submit" class="bg-brand hover:bg-blue-900 text-white font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow transition">
-          <i class="fa-solid fa-user-plus"></i> Cadastrar Colaborador
+          <i class="fa-solid fa-user-plus"></i> Salvar Colaborador
         </button>
       </div>
     </form>
   </div>
 
-  <!-- Relatório e Banco de Horas Consolidado -->
+  <!-- Relatório e Banco de Horas -->
   <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
     <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b pb-3">
       <div>
-        <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-file-invoice-dollar text-brand mr-2"></i>Relatório Mensal & Banco de Horas</h3>
-        <p class="text-xs text-slate-500">Cálculo automático de horas positivas (extras) e negativas (atrasos) por colaborador.</p>
+        <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-calculator text-brand mr-2"></i>Espelho de Ponto & Saldo de Horas</h3>
+        <p class="text-xs text-slate-500">Cálculo mensal de horas extras e faltas em tempo real.</p>
       </div>
       <button onclick="gerarPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 transition shadow">
         <i class="fa-solid fa-file-pdf"></i> Exportar Relatório PDF
       </button>
     </div>
 
-    <!-- Tabela Resumo Consolidado (Horas Positivas/Negativas) -->
+    <!-- Tabela de Banco de Horas -->
     <div class="overflow-x-auto rounded-xl border border-slate-200 mb-6">
       <table class="w-full text-left border-collapse">
         <thead>
           <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase">
             <th class="p-3">Colaborador</th>
             <th class="p-3">Total Trabalhado</th>
-            <th class="p-3">Saldo (Extras / Negativas)</th>
+            <th class="p-3">Saldo (Extras / Atrasos)</th>
           </tr>
         </thead>
         <tbody id="tabelaResumo" class="text-xs divide-y divide-slate-100">
-          <tr><td colspan="3" class="p-4 text-center text-slate-400">Calculando banco de horas...</td></tr>
+          <tr><td colspan="3" class="p-4 text-center text-slate-400">Calculando saldo de horas...</td></tr>
         </tbody>
       </table>
     </div>
 
+    <!-- Tabela com Histórico Completo -->
     <div class="border-t pt-4">
-      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Histórico Detalhado de Registros</h3>
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Histórico Recente de Pontos</h3>
       <div class="overflow-x-auto rounded-xl border border-slate-200">
         <table class="w-full text-left border-collapse">
           <thead>
@@ -237,11 +242,11 @@
               <th class="p-3">Data / Hora</th>
               <th class="p-3">Tipo</th>
               <th class="p-3">GPS / Local</th>
-              <th class="p-3">Face ID</th>
+              <th class="p-3">Validação Facial</th>
             </tr>
           </thead>
           <tbody id="tabelaPontos" class="text-xs divide-y divide-slate-100">
-            <tr><td colspan="5" class="p-4 text-center text-slate-400">Carregando registros...</td></tr>
+            <tr><td colspan="5" class="p-4 text-center text-slate-400">Carregando histórico do banco de dados...</td></tr>
           </tbody>
         </table>
       </div>
@@ -327,25 +332,12 @@ function tick() {
   const d = new Date();
   $('clock').textContent = d.toLocaleTimeString("pt-BR");
   $('date').textContent = d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
-  
-  const diaSemana = d.getDay();
-  const infoEscala = $('statusEscala');
-  if (diaSemana === 0) {
-    infoEscala.textContent = "Domingo: Folga";
-    infoEscala.className = "text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full";
-  } else if (diaSemana === 6) {
-    infoEscala.textContent = "Sábado: 08h - 12h";
-    infoEscala.className = "text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full";
-  } else {
-    infoEscala.textContent = "Seg-Sex: 08h - 17:30 (Almoço 12h-13:30)";
-    infoEscala.className = "text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full";
-  }
 }
 tick(); setInterval(tick, 1000);
 
 async function carregarColaboradores() {
   const select = $('selectColaborador');
-  select.innerHTML = '<option value="">-- Selecione o funcionário --</option>';
+  select.innerHTML = '<option value="">-- Selecione seu nome --</option>';
   if (!db) return;
   try {
     const snap = await getDocs(collection(db, "colaboradores"));
@@ -606,7 +598,7 @@ async function carregarDadosAdmin() {
         const faltaM = Math.round(2400 - minutosTrabalhadosTotal);
         const hFalta = Math.floor(faltaM / 60);
         const mFalta = faltaM % 60;
-        saldoTexto = `-${hFalta}h ${mFalta}m (Devendo / Saldo Negativo)`;
+        saldoTexto = `-${hFalta}h ${mFalta}m (Devendo / Atrasos)`;
         saldoClasse = "text-rose-600 font-bold";
       }
 
