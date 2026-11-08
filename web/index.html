@@ -96,7 +96,6 @@
     Firebase não configurado.
   </div>
 
-  <!-- Seleção do Funcionário -->
   <section class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
     <div class="flex items-center justify-between">
       <p class="font-bold text-slate-800">Colaborador</p>
@@ -109,7 +108,7 @@
     </div>
   </section>
 
-  <!-- Card de Tempo Trabalhado em Tempo Real (Cronômetro) -->
+  <!-- Cronômetro de Jornada Ativa -->
   <section id="cardCronometro" class="hidden bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-2xl p-4 shadow-md flex items-center justify-between">
     <div>
       <p class="text-[11px] text-blue-200 uppercase tracking-wider font-bold">Tempo de Jornada Ativa</p>
@@ -122,7 +121,6 @@
     </div>
   </section>
 
-  <!-- Validação de Foto (Face ID) -->
   <section class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
     <div class="flex items-center justify-between mb-4">
       <p class="font-bold text-slate-800">Validação Facial (Face ID)</p>
@@ -146,7 +144,6 @@
     </div>
   </section>
 
-  <!-- GPS de Precisão -->
   <section class="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
     <span id="gpsDot" class="h-3 w-3 rounded-full bg-slate-300 shrink-0"></span>
     <div class="flex-1 min-w-0">
@@ -156,7 +153,6 @@
     <button id="btnGps" class="hidden text-xs font-bold text-brand px-2 py-1 rounded-lg">Atualizar</button>
   </section>
 
-  <!-- Botões de Registro de Jornada -->
   <section class="space-y-3">
     <div class="grid grid-cols-2 gap-3">
       <button id="btnEntrada" onclick="registrarPonto('Entrada')" class="h-14 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex flex-col items-center justify-center gap-1 disabled:bg-slate-200 disabled:text-slate-400 shadow">
@@ -183,7 +179,6 @@
 <!-- ABA 2: PAINEL DA GESTÃO (ADMIN) -->
 <main id="abaAdmin" class="hidden w-full max-w-4xl px-4 py-6 space-y-6">
   
-  <!-- Cadastro de Funcionários -->
   <div id="formCadColab" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
     <div class="flex items-center justify-between border-b pb-3">
       <div>
@@ -211,7 +206,6 @@
       </div>
     </form>
 
-    <!-- Lista de Colaboradores Cadastrados com Opção de Excluir -->
     <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
       <table class="w-full text-left border-collapse">
         <thead>
@@ -228,7 +222,6 @@
     </div>
   </div>
 
-  <!-- Relatório e Banco de Horas -->
   <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
     <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b pb-3">
       <div>
@@ -240,7 +233,6 @@
       </button>
     </div>
 
-    <!-- Tabela de Banco de Horas -->
     <div class="overflow-x-auto rounded-xl border border-slate-200 mb-6">
       <table class="w-full text-left border-collapse">
         <thead>
@@ -256,7 +248,6 @@
       </table>
     </div>
 
-    <!-- Tabela com Histórico Completo -->
     <div class="border-t pt-4">
       <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Histórico Recente de Pontos</h3>
       <div class="overflow-x-auto rounded-xl border border-slate-200">
@@ -360,7 +351,6 @@ function tick() {
 }
 tick(); setInterval(tick, 1000);
 
-/* ---- Carregar Colaboradores (Select e Tabela Admin) ---- */
 async function carregarColaboradoresPublico() {
   const select = $('selectColaborador');
   select.innerHTML = '<option value="">-- Selecione seu nome --</option>';
@@ -423,7 +413,7 @@ $("formCadastroFunc").addEventListener("submit", async e => {
     carregarColaboradoresPublico();
     carregarColaboradoresAdmin();
   } catch (err) {
-    alert("Erro ao cadastrar colaborador.");
+    alert("Erro ao cadastrar colaborador. Verifique a consola.");
   }
 });
 
@@ -438,7 +428,6 @@ window.excluirColaborador = async function(id) {
   }
 };
 
-/* ---- Câmera / Face ID ---- */
 let stream = null, foto = null;
 function camChip(txt, cls) {
   $('camChip').textContent = txt;
@@ -535,7 +524,6 @@ function atualizarBotoes() {
 }
 $('selectColaborador').addEventListener("change", atualizarBotoes);
 
-/* ---- Cronômetro de Jornada Ativa ---- */
 let cronometroInterval = null;
 function iniciarCronometro(horarioEntrada) {
   $('cardCronometro').classList.remove("hidden");
@@ -569,12 +557,11 @@ window.registrarPonto = async function(tipo) {
   btnEl.innerHTML = `<i class="fa-solid fa-spinner spin text-lg"></i> Registrando...`;
 
   try {
-    const agoraServidor = serverTimestamp();
     await addDoc(collection(db, "pontos"), {
       colaboradorId,
       nomeColaborador: colaboradorNome,
       tipo,
-      timestamp: agoraServidor,
+      timestamp: serverTimestamp(),
       latitude: ultimaPosicao.latitude,
       longitude: ultimaPosicao.longitude,
       precisao: Math.round(ultimaPosicao.accuracy),
@@ -585,7 +572,6 @@ window.registrarPonto = async function(tipo) {
     msgBox.textContent = `✓ Ponto de "${tipo}" registrado com sucesso para ${colaboradorNome}!`;
     msgBox.className = "rounded-2xl p-4 text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 block";
     
-    // Se bateu entrada, inicia o cronômetro visual
     if (tipo === 'Entrada') {
       iniciarCronometro(new Date());
     } else if (tipo === 'Saída') {
