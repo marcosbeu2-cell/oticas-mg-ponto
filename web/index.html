@@ -308,7 +308,7 @@ window.bloquearAdmin = function() {
 };
 
 window.mudarAba = function(aba) {
-  const p = $('abaPonto'), a =$('abaAdmin'), btnP = $('tabBtnPonto'), btnA =$('tabBtnAdmin');
+  const p = $('abaPonto'), a = $('abaAdmin'), btnP = $('tabBtnPonto'), btnA = $('tabBtnAdmin');
   if (aba === 'ponto') {
     p.classList.remove('hidden');
     a.classList.add('hidden');
@@ -397,7 +397,10 @@ function camChip(txt, cls) {
   $('camChip').textContent = txt;
   $('camChip').className = "text-xs font-bold rounded-full px-2.5 py-1 " + cls;
 }
-function camErro(t) { $('camErr').textContent = t \vert{}\vert{} ""; $('camErr').classList.toggle("hidden", !t); }
+function camErro(t) { 
+  $('camErr').textContent = t || ""; 
+  $('camErr').classList.toggle("hidden", !t); 
+}
 function pararCamera() { stream?.getTracks().forEach(t => t.stop()); stream = null; }
 
 $('btnCam').addEventListener("click", async () => {
@@ -512,3 +515,119 @@ window.registrarPonto = async function(tipo) {
     });
 
     const msgBox = $('msg');
+    msgBox.textContent = `✓ Ponto de "${tipo}" registrado com sucesso para ${colaboradorNome}!`;
+    msgBox.className = "rounded-2xl p-4 text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 block";
+    
+    foto = null;
+    $('preview').classList.add("hidden");
+    $('btnCam').classList.remove("hidden");
+    $('lens').classList.remove("ok");
+    camChip("Câmera desligada", "bg-slate-100 text-slate-600");
+    atualizarBotoes();
+
+    setTimeout(() => { msgBox.classList.add("hidden"); }, 5000);
+  } catch (err) {
+    alert("Erro ao salvar o ponto. Verifique sua conexão.");
+  } finally {
+    btnEl.innerHTML = textoOriginal;
+    atualizarBotoes();
+  }
+};
+
+async function carregarDadosAdmin() {
+  const tbodyPontos = $('tabelaPontos');
+  const tbodyResumo = $('tabelaResumo');
+  if (!db) return;
+
+  try {
+    const q = query(collection(db, "pontos"), orderBy("timestamp", "desc"));
+    const snap = await getDocs(q);
+    
+    tbodyPontos.innerHTML = "";
+    if (snap.empty) {
+      tbodyPontos.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhum ponto registrado.</td></tr>`;
+      tbodyResumo.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400">Sem dados para cálculo.</td></tr>`;
+      return;
+    }
+
+    const registrosPorColab = {};
+
+    snap.forEach(docSnap => {
+      const p = docSnap.data();
+      const dataFmt = p.timestamp ? new Date(p.timestamp.toDate()).toLocaleString("pt-BR") : "Enviando...";
+      
+      if (p.colaboradorId && p.timestamp) {
+        if (!registrosPorColab[p.colaboradorId]) {
+          registrosPorColab[p.colaboradorId] = { nome: p.nomeColaborador, entradas: [], saidas: [] };
+        }
+        const dataObj = p.timestamp.toDate();
+        if (p.tipo === 'Entrada' || p.tipo === 'Retorno Almoço') {
+          registrosPorColab[p.colaboradorId].entradas.push(dataObj);
+        } else if (p.tipo === 'Saída' || p.tipo === 'Saída Almoço') {
+          registrosPorColab[p.colaboradorId].saidas.push(dataObj);
+        }
+      }
+
+      const tr = document.createElement("tr");
+      tr.className = "hover:bg-slate-50 transition";
+      tr.innerHTML = `
+        <td class="p-3 font-semibold text-slate-800">${p.nomeColaborador || 'Funcionário'}</td>
+        <td class="p-3 text-slate-600">${dataFmt}</td>
+        <td class="p-3"><span class="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded text-[10px]">${p.tipo}</span></td>
+        <td class="p-3 text-slate-600"><i class="fa-solid fa-location-dot text-brand mr-1"></i> Lat: ${p.latitude?.toFixed(4)}, Lon: ${p.longitude?.toFixed(4)} (~${p.precisao}m)</td>
+        <td class="p-3 text-emerald-600 font-semibold"><img src="${p.foto}" class="w-8 h-8 rounded-full object-cover border border-slate-300 inline-block mr-1"> Validado</td>
+      `;
+      tbodyPontos.appendChild(tr);
+    });
+
+    tbodyResumo.innerHTML = "";
+    Object.keys(registrosPorColab).forEach(id => {
+      const colab = registrosPorColab[id];
+      let minutosTrabalhadosTotal = 0;
+      
+      const qtdPares = Math.min(colab.entradas.length, colab.saidas.length);
+      for(let i=0; i<qtdPares; i++) {
+        const diffMs = colab.saidas[i] - colab.entradas[i];
+        if(diffMs > 0) minutosTrabalhadosTotal += diffMs / (1000 * 60);
+      }
+
+      const horasTrab = Math.floor(minutosTrabalhadosTotal / 60);
+      const minsTrab = Math.round(minutosTrabalhadosTotal % 60);
+      
+      let saldoTexto = "";
+      let saldoClasse = "";
+      if (minutosTrabalhadosTotal >= 2400) {
+        const extraM = Math.round(minutosTrabalhadosTotal - 2400);
+        const hExtra = Math.floor(extraM / 60);
+        const mExtra = extraM % 60;
+        saldoTexto = `+${hExtra}h ${mExtra}m (Horas Extras)`;
+        saldoClasse = "text-emerald-600 font-bold";
+      } else {
+        const faltaM = Math.round(2400 - minutosTrabalhadosTotal);
+        const hFalta = Math.floor(faltaM / 60);
+        const mFalta = faltaM % 60;
+        saldoTexto = `-${hFalta}h ${mFalta}m (Devendo / Saldo Negativo)`;
+        saldoClasse = "text-rose-600 font-bold";
+      }
+
+      const trResumo = document.createElement("tr");
+      trResumo.className = "hover:bg-slate-50 transition";
+      trResumo.innerHTML = `
+        <td class="p-3 font-semibold text-slate-800">${colab.nome}</td>
+        <td class="p-3 font-bold text-slate-700">${horasTrab}h ${minsTrab}m</td>
+        <td class="p-3 ${saldoClasse}">${saldoTexto}</td>
+      `;
+      tbodyResumo.appendChild(trResumo);
+    });
+
+  } catch (err) {
+    console.error("Erro ao carregar dados admin:", err);
+  }
+}
+
+window.gerarPDF = function() {
+  window.print();
+};
+</script>
+</body>
+</html>
