@@ -4,10 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1E3A8A">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>Óticas M&G • Sistema Integrado de Ponto</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231E3A8A'/%3E%3Ccircle cx='22' cy='34' r='11' fill='none' stroke='white' stroke-width='4'/%3E%3Ccircle cx='42' cy='34' r='11' fill='none' stroke='white' stroke-width='4'/%3E%3C/svg%3E">
+<title>Óticas M&G • Sistema de Ponto & Gestão</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -30,15 +27,20 @@
   .lens video { transform: scaleX(-1); }
   .lens-ring { box-shadow: 0 0 0 6px #fff, 0 0 0 9px #1E3A8A; }
   .lens-ring.ok { box-shadow: 0 0 0 6px #fff, 0 0 0 9px #16A34A; }
-  button:focus-visible, input:focus-visible { outline: 3px solid #1E3A8A; outline-offset: 2px; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .spin { animation: spin .8s linear infinite; }
+  @media print {
+    body { background: white; }
+    header, #formCadColab, .no-print { display: none !important; }
+    #abaAdmin { display: block !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
+    table { font-size: 10px !important; }
+  }
 </style>
 </head>
 <body class="font-sans text-slate-900 min-h-screen flex flex-col items-center">
 
-<!-- Cabeçalho Principal -->
-<header class="w-full bg-brand text-white shadow-md">
+<!-- Cabeçalho -->
+<header class="w-full bg-brand text-white shadow-md no-print">
   <div class="max-w-4xl mx-auto px-5 py-4 flex items-center justify-between">
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 bg-white text-brand rounded-xl flex items-center justify-center font-extrabold text-lg shadow">
@@ -46,7 +48,7 @@
       </div>
       <div>
         <h1 class="text-lg font-extrabold leading-tight">Óticas M&G</h1>
-        <p class="text-xs text-blue-200">Sistema de Gestão & Registro de Ponto</p>
+        <p class="text-xs text-blue-200">Controle de Ponto Inteligente</p>
       </div>
     </div>
     <div class="text-right">
@@ -60,193 +62,198 @@
     <button id="tabBtnPonto" onclick="mudarAba('ponto')" class="flex-1 py-3 text-center text-sm font-bold border-b-4 border-white text-white flex items-center justify-center gap-2 transition">
       <i class="fa-solid fa-clock"></i> Bater Ponto
     </button>
-    <button id="tabBtnAdmin" onclick="mudarAba('admin')" class="flex-1 py-3 text-center text-sm font-bold border-b-4 border-transparent text-blue-200 hover:text-white flex items-center justify-center gap-2 transition">
-      <i class="fa-solid fa-chart-pie"></i> Painel da Gestão
+    <button id="tabBtnAdmin" onclick="tentarAbrirAdmin()" class="flex-1 py-3 text-center text-sm font-bold border-b-4 border-transparent text-blue-200 hover:text-white flex items-center justify-center gap-2 transition">
+      <i class="fa-solid fa-lock" id="lockIcon"></i> Painel da Gestão
     </button>
   </div>
 </header>
 
+<!-- MODAL DE SENHA PARA O GESTOR -->
+<div id="modalSenha" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
+  <div class="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+    <div class="text-center">
+      <div class="w-12 h-12 bg-blue-50 text-brand rounded-full mx-auto flex items-center justify-center text-xl font-bold mb-2">
+        <i class="fa-solid fa-shield-halved"></i>
+      </div>
+      <h3 class="text-lg font-bold text-slate-900">Área Restrita do Gestor</h3>
+      <p class="text-xs text-slate-500 mt-1">Digite a senha de acesso gerencial para continuar.</p>
+    </div>
+    <form id="formSenha" class="space-y-3">
+      <input type="password" id="inputSenhaAdmin" required placeholder="Senha (ex: 123456)"
+        class="w-full rounded-xl border border-slate-300 px-4 py-3 text-center tracking-widest text-lg font-bold focus:outline-none focus:border-brand">
+      <p id="erroSenha" class="text-xs text-red-600 text-center hidden">Senha incorreta!</p>
+      <div class="grid grid-cols-2 gap-2 pt-2">
+        <button type="button" onclick="fecharModalSenha()" class="rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 text-sm">Cancelar</button>
+        <button type="submit" class="rounded-xl bg-brand text-white font-bold py-2.5 text-sm shadow">Entrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- ABA 1: BATER PONTO (FUNCIONÁRIO) -->
 <main id="abaPonto" class="w-full max-w-md px-5 py-5 space-y-5">
-
   <div id="cfgWarn" class="hidden rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-sm p-3">
-    Firebase não configurado. Cole as chaves do seu projeto em <code>firebaseConfig</code> no código.
+    Firebase não configurado no código.
   </div>
 
-  <!-- Colaborador -->
-  <section class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-    <div id="idView" class="hidden items-center gap-3">
-      <div id="avatar" class="h-12 w-12 rounded-full bg-brand text-white grid place-items-center font-extrabold text-lg">?</div>
-      <div class="flex-1 min-w-0">
-        <p id="vNome" class="font-bold truncate"></p>
-        <p id="vSub" class="text-sm text-slate-500 truncate"></p>
-      </div>
-      <button id="btnTrocar" class="text-sm font-bold text-brand px-2 py-1 rounded-lg">Trocar</button>
+  <section class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+    <div class="flex items-center justify-between">
+      <p class="font-bold text-slate-800">Identificação do Colaborador</p>
+      <span id="statusEscala" class="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">Escala: 08h-17:30</span>
     </div>
-    <form id="idForm" class="space-y-3" autocomplete="off">
-      <p class="font-bold">Quem está registrando?</p>
-      <label class="block text-sm text-slate-600">Código do colaborador
-        <input id="fId" required maxlength="40" placeholder="ex.: carlos_silva"
-          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-3 text-base">
-      </label>
-      <label class="block text-sm text-slate-600">Nome completo
-        <input id="fNome" required maxlength="80" placeholder="ex.: Carlos Silva"
-          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-3 text-base">
-      </label>
-      <label class="block text-sm text-slate-600">Cargo (opcional)
-        <input id="fCargo" maxlength="60" placeholder="ex.: Motoboy / Rota Externa"
-          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-3 text-base">
-      </label>
-      <button class="w-full rounded-xl bg-brand text-white font-bold py-3 shadow">Salvar identificação</button>
-    </form>
+    <div>
+      <label class="block text-xs font-semibold text-slate-500 mb-1">Selecione seu nome na lista:</label>
+      <select id="selectColaborador" class="w-full rounded-xl border border-slate-300 px-3 py-3 text-base font-medium bg-white focus:outline-none focus:border-brand">
+        <option value="">-- Selecione o funcionário --</option>
+      </select>
+    </div>
   </section>
 
-  <!-- Foto -->
   <section class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
     <div class="flex items-center justify-between mb-4">
-      <p class="font-bold">Foto de validação</p>
+      <p class="font-bold text-slate-800">Foto de Validação (Face ID)</p>
       <span id="camChip" class="text-xs font-bold rounded-full px-2.5 py-1 bg-slate-100 text-slate-600">Câmera desligada</span>
     </div>
     <div class="px-3">
-      <div id="lens" class="lens lens-ring mx-auto max-w-[260px]">
+      <div id="lens" class="lens lens-ring mx-auto max-w-[240px]">
         <video id="video" autoplay playsinline muted class="hidden"></video>
         <img id="preview" alt="Foto capturada" class="hidden">
-        <div id="camEmpty" class="absolute inset-0 grid place-items-center text-center text-slate-300 text-sm px-8">
-          Ative a câmera para tirar a foto antes de registrar.
+        <div id="camEmpty" class="absolute inset-0 grid place-items-center text-center text-slate-300 text-xs px-6">
+          Ative a câmera para validação presencial.
         </div>
       </div>
     </div>
-    <p id="camErr" class="hidden mt-3 text-sm text-red-700"></p>
-    <div class="mt-5 grid">
-      <button id="btnCam" class="rounded-xl border-2 border-brand text-brand font-bold py-3">Ativar câmera</button>
-      <button id="btnShot" class="hidden rounded-xl bg-brand text-white font-bold py-3 shadow">Tirar foto</button>
-      <button id="btnRetake" class="hidden rounded-xl border-2 border-brand text-brand font-bold py-3">Tirar outra foto</button>
+    <p id="camErr" class="hidden mt-3 text-sm text-red-700 text-center"></p>
+    <div class="mt-4 grid">
+      <button id="btnCam" class="rounded-xl border-2 border-brand text-brand font-bold py-3 text-sm transition">Ativar câmera</button>
+      <button id="btnShot" class="hidden rounded-xl bg-brand text-white font-bold py-3 text-sm shadow">Tirar foto</button>
+      <button id="btnRetake" class="hidden rounded-xl border-2 border-brand text-brand font-bold py-3 text-sm">Tirar outra foto</button>
     </div>
   </section>
 
-  <!-- GPS -->
   <section class="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
     <span id="gpsDot" class="h-3 w-3 rounded-full bg-slate-300 shrink-0"></span>
     <div class="flex-1 min-w-0">
-      <p id="gpsTitle" class="font-bold">GPS</p>
-      <p id="gpsSub" class="text-sm text-slate-500 truncate">Verificando localização...</p>
+      <p id="gpsTitle" class="font-bold text-sm">GPS de Alta Precisão</p>
+      <p id="gpsSub" class="text-xs text-slate-500 truncate">Verificando coordenadas...</p>
     </div>
-    <button id="btnGps" class="hidden text-sm font-bold text-brand px-2 py-1 rounded-lg">Tentar de novo</button>
+    <button id="btnGps" class="hidden text-xs font-bold text-brand px-2 py-1 rounded-lg">Atualizar</button>
   </section>
 
-  <!-- Botões de Ação -->
   <section class="space-y-3">
-    <button id="btnIn" class="w-full h-16 rounded-2xl bg-green-600 text-white text-lg font-extrabold flex items-center justify-center gap-3 disabled:bg-slate-300 disabled:text-slate-500 shadow">
-      <span class="lbl">REGISTRAR ENTRADA</span>
-    </button>
-    <button id="btnOut" class="w-full h-16 rounded-2xl bg-red-600 text-white text-lg font-extrabold flex items-center justify-center gap-3 disabled:bg-slate-300 disabled:text-slate-500 shadow">
-      <span class="lbl">REGISTRAR SAÍDA</span>
-    </button>
-    <p id="hint" class="text-center text-sm text-slate-500"></p>
+    <div class="grid grid-cols-2 gap-3">
+      <button id="btnEntrada" onclick="registrarPonto('Entrada')" class="h-14 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex flex-col items-center justify-center gap-1 disabled:bg-slate-200 disabled:text-slate-400 shadow">
+        <i class="fa-solid fa-sign-in-alt text-base"></i> 1. ENTRADA
+      </button>
+      <button id="btnAlmoco" onclick="registrarPonto('Saída Almoço')" class="h-14 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs flex flex-col items-center justify-center gap-1 disabled:bg-slate-200 disabled:text-slate-400 shadow">
+        <i class="fa-solid fa-utensils text-base"></i> 2. SAÍDA ALMOÇO
+      </button>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <button id="btnRetorno" onclick="registrarPonto('Retorno Almoço')" class="h-14 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs flex flex-col items-center justify-center gap-1 disabled:bg-slate-200 disabled:text-slate-400 shadow">
+        <i class="fa-solid fa-rotate-left text-base"></i> 3. VOLTA ALMOÇO
+      </button>
+      <button id="btnSaida" onclick="registrarPonto('Saída')" class="h-14 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs flex flex-col items-center justify-center gap-1 disabled:bg-slate-200 disabled:text-slate-400 shadow">
+        <i class="fa-solid fa-sign-out-alt text-base"></i> 4. SAÍDA FINAL
+      </button>
+    </div>
+    <p id="hint" class="text-center text-xs text-slate-500 pt-1"></p>
   </section>
 
-  <div id="msg" role="status" aria-live="polite" class="hidden rounded-2xl p-4 text-sm font-bold"></div>
-  <p id="last" class="text-center text-xs text-slate-400"></p>
+  <div id="msg" role="status" aria-live="polite" class="hidden rounded-2xl p-4 text-xs font-bold text-center"></div>
 </main>
 
-<!-- ABA 2: PAINEL ADMINISTRATIVO (GESTOR) -->
+<!-- ABA 2: PAINEL DE GESTÃO (ADMIN) -->
 <main id="abaAdmin" class="hidden w-full max-w-4xl px-4 py-6 space-y-6">
-  <!-- Banner Exportar -->
-  <div class="flex flex-col md:flex-row items-start md:items-center justify-between bg-white border border-slate-200 rounded-2xl p-4 gap-4 shadow-sm">
-    <div>
-      <h2 class="text-base font-bold text-slate-800">Relatório Consolidado de Horas Extras</h2>
-      <p class="text-xs text-slate-500">Mês de Referência: Novembro/2026</p>
+  
+  <!-- Cadastro de Funcionários -->
+  <div id="formCadColab" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+    <div class="flex items-center justify-between border-b pb-3">
+      <div>
+        <h2 class="text-base font-bold text-slate-800"><i class="fa-solid fa-users-gear text-brand mr-2"></i>Gestão de Colaboradores</h2>
+        <p class="text-xs text-slate-500">Cadastre ou remova funcionários que aparecem para bater ponto.</p>
+      </div>
+      <button onclick="bloquearAdmin()" class="text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl transition">
+        <i class="fa-solid fa-lock mr-1"></i> Bloquear Painel
+      </button>
     </div>
-    <button class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 transition shadow">
-      <i class="fa-solid fa-file-pdf"></i> Exportar Relatório PDF
-    </button>
+
+    <form id="formCadastroFunc" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">ID ou Matrícula</label>
+        <input type="text" id="novoId" required placeholder="ex: carlos_silva" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Nome Completo</label>
+        <input type="text" id="novoNome" required placeholder="ex: Carlos Silva" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Cargo / Função</label>
+        <input type="text" id="novoCargo" required placeholder="ex: Atendente / Motoboy" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+      </div>
+      <div class="md:col-span-3 flex justify-end">
+        <button type="submit" class="bg-brand hover:bg-blue-900 text-white font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow transition">
+          <i class="fa-solid fa-user-plus"></i> Cadastrar Colaborador
+        </button>
+      </div>
+    </form>
   </div>
 
-  <!-- Métricas -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    <div class="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Colaboradores Ativos</p>
-      <p class="text-2xl font-black text-brand mt-1">12</p>
+  <!-- Relatório e Banco de Horas Consolidado -->
+  <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b pb-3">
+      <div>
+        <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-file-invoice-dollar text-brand mr-2"></i>Relatório Mensal & Banco de Horas</h3>
+        <p class="text-xs text-slate-500">Cálculo automático de horas positivas (extras) e negativas (atrasos) por colaborador.</p>
+      </div>
+      <button onclick="gerarPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 transition shadow">
+        <i class="fa-solid fa-file-pdf"></i> Exportar Relatório PDF
+      </button>
     </div>
-    <div class="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total de Horas Extras (Mês)</p>
-      <p class="text-2xl font-black text-amber-600 mt-1">34h 20m</p>
-    </div>
-    <div class="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Precisão Média Biometria</p>
-      <p class="text-2xl font-black text-emerald-600 mt-1">99.8%</p>
-    </div>
-  </div>
 
-  <!-- Tabela de Registros -->
-  <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Últimos Pontos Registrados (Loja e Rotas)</h3>
-    <div class="overflow-x-auto rounded-xl border border-slate-200">
+    <!-- Tabela Resumo Consolidado (Horas Positivas/Negativas) -->
+    <div class="overflow-x-auto rounded-xl border border-slate-200 mb-6">
       <table class="w-full text-left border-collapse">
         <thead>
           <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase">
-            <th class="p-3">Funcionário</th>
-            <th class="p-3">Perfil</th>
-            <th class="p-3">Data/Hora</th>
-            <th class="p-3">Tipo</th>
-            <th class="p-3">Local / GPS</th>
-            <th class="p-3">Face ID</th>
-            <th class="p-3">Saldo</th>
+            <th class="p-3">Colaborador</th>
+            <th class="p-3">Total Trabalhado</th>
+            <th class="p-3">Saldo (Extras / Negativas)</th>
           </tr>
         </thead>
-        <tbody class="text-xs divide-y divide-slate-100">
-          <tr class="hover:bg-slate-50 transition">
-            <td class="p-3 font-semibold text-slate-800">Carlos Silva</td>
-            <td class="p-3"><span class="px-2 py-0.5 bg-blue-100 text-blue-800 font-medium rounded text-[10px]">Motoboy</span></td>
-            <td class="p-3 text-slate-600">08/11/2026 18:05</td>
-            <td class="p-3 text-slate-600">Saída</td>
-            <td class="p-3 text-slate-600"><i class="fa-solid fa-route text-blue-500 mr-1"></i> Rota Externa</td>
-            <td class="p-3 text-emerald-600 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>99.2%</td>
-            <td class="p-3 font-bold text-amber-600">+00:35m</td>
-          </tr>
-          <tr class="hover:bg-slate-50 transition">
-            <td class="p-3 font-semibold text-slate-800">Mariana Souza</td>
-            <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 text-slate-700 font-medium rounded text-[10px]">Loja</span></td>
-            <td class="p-3 text-slate-600">08/11/2026 18:01</td>
-            <td class="p-3 text-slate-600">Saída</td>
-            <td class="p-3 text-slate-600"><i class="fa-solid fa-store text-slate-400 mr-1"></i> Matriz Óticas M&G</td>
-            <td class="p-3 text-emerald-600 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>98.7%</td>
-            <td class="p-3 font-bold text-slate-500">00:00m</td>
-          </tr>
+        <tbody id="tabelaResumo" class="text-xs divide-y divide-slate-100">
+          <tr><td colspan="3" class="p-4 text-center text-slate-400">Calculando banco de horas...</td></tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="border-t pt-4">
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Histórico Detalhado de Registros</h3>
+      <div class="overflow-x-auto rounded-xl border border-slate-200">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase">
+              <th class="p-3">Colaborador</th>
+              <th class="p-3">Data / Hora</th>
+              <th class="p-3">Tipo</th>
+              <th class="p-3">GPS / Local</th>
+              <th class="p-3">Face ID</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaPontos" class="text-xs divide-y divide-slate-100">
+            <tr><td colspan="5" class="p-4 text-center text-slate-400">Carregando registros...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </main>
 
-<script>
-  /* ---- Alternar Abas ---- */
-  function mudarAba(aba) {
-    const p = document.getElementById('abaPonto');
-    const a = document.getElementById('abaAdmin');
-    const btnP = document.getElementById('tabBtnPonto');
-    const btnA = document.getElementById('tabBtnAdmin');
-
-    if (aba === 'ponto') {
-      p.classList.remove('hidden');
-      a.classList.add('hidden');
-      btnP.className = "flex-1 py-3 text-center text-sm font-bold border-b-4 border-white text-white flex items-center justify-center gap-2 transition";
-      btnA.className = "flex-1 py-3 text-center text-sm font-bold border-b-4 border-transparent text-blue-200 hover:text-white flex items-center justify-center gap-2 transition";
-    } else {
-      p.classList.add('hidden');
-      a.classList.remove('hidden');
-      btnA.className = "flex-1 py-3 text-center text-sm font-bold border-b-4 border-white text-white flex items-center justify-center gap-2 transition";
-      btnP.className = "flex-1 py-3 text-center text-sm font-bold border-b-4 border-transparent text-blue-200 hover:text-white flex items-center justify-center gap-2 transition";
-    }
-  }
-</script>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp }
+import { getFirestore, collection, addDoc, getDocs, doc, setDoc, serverTimestamp, query, orderBy } 
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* ====== CONFIGURAÇÃO FIREBASE ====== */
 const firebaseConfig = {
   apiKey: "AIzaSyCeZKX3qGmFpSfSycZt-d6xCVedajXFoA8",
   authDomain: "oticas-mg-ponto.firebaseapp.com",
@@ -262,197 +269,246 @@ const configurado = !firebaseConfig.apiKey.startsWith("COLE");
 if (!configurado) $("cfgWarn").classList.remove("hidden");
 const db = configurado ? getFirestore(initializeApp(firebaseConfig)) : null;
 
-/* ---- Relógio ---- */
+const SENHA_GESTOR = "123456";
+let adminLogado = false;
+
+window.tentarAbrirAdmin = function() {
+  if (adminLogado) {
+    mudarAba('admin');
+  } else {
+    $("modalSenha").classList.remove("hidden");
+    $("inputSenhaAdmin").value = "";
+    $("erroSenha").classList.add("hidden");
+    $("inputSenhaAdmin").focus();
+  }
+};
+
+window.fecharModalSenha = function() {
+  $("modalSenha").classList.add("hidden");
+};
+
+$("formSenha").addEventListener("submit", e => {
+  e.preventDefault();
+  if ($("inputSenhaAdmin").value.trim() === SENHA_GESTOR) {
+    adminLogado = true;
+    $("modalSenha").classList.add("hidden");
+    $("lockIcon").className = "fa-solid fa-lock-open text-emerald-400";
+    mudarAba('admin');
+    carregarColaboradores();
+    carregarDadosAdmin();
+  } else {
+    $("erroSenha").classList.remove("hidden");
+  }
+});
+
+window.bloquearAdmin = function() {
+  adminLogado = false;
+  $("lockIcon").className = "fa-solid fa-lock";
+  mudarAba('ponto');
+};
+
+window.mudarAba = function(aba) {
+  const p = $('abaPonto'), a =$('abaAdmin'), btnP = $('tabBtnPonto'), btnA =$('tabBtnAdmin');
+  if (aba === 'ponto') {
+    p.classList.remove('hidden');
+    a.classList.add('hidden');
+    btnP.className = "flex-1 py-3 text-center text-sm font-bold border-b-4 border-white text-white flex items-center justify-center gap-2 transition";
+    btnA.className = "flex-1 py-3 text-center text-sm font-bold border-b-4 border-transparent text-blue-200 hover:text-white flex items-center justify-center gap-2 transition";
+  } else {
+    if (!adminLogado) return;
+    p.classList.add('hidden');
+    a.classList.remove('hidden');
+    btnA.className = "flex-1 py-3 text-center text-sm font-bold border-b-4 border-white text-white flex items-center justify-center gap-2 transition";
+    btnP.className = "flex-1 py-3 text-center text-sm font-bold border-b-4 border-transparent text-blue-200 hover:text-white flex items-center justify-center gap-2 transition";
+  }
+};
+
 function tick() {
   const d = new Date();
-  $("clock").textContent = d.toLocaleTimeString("pt-BR");
-  $("date").textContent = d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
+  $('clock').textContent = d.toLocaleTimeString("pt-BR");
+  $('date').textContent = d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
+  
+  const diaSemana = d.getDay();
+  const infoEscala = $('statusEscala');
+  if (diaSemana === 0) {
+    infoEscala.textContent = "Domingo: Folga";
+    infoEscala.className = "text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full";
+  } else if (diaSemana === 6) {
+    infoEscala.textContent = "Sábado: 08h - 12h";
+    infoEscala.className = "text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full";
+  } else {
+    infoEscala.textContent = "Seg-Sex: 08h - 17:30 (Almoço 12h-13:30)";
+    infoEscala.className = "text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full";
+  }
 }
 tick(); setInterval(tick, 1000);
 
-/* ---- Colaborador ---- */
-let colab = null;
-try { colab = JSON.parse(localStorage.getItem("mg_colab")); } catch {}
+async function carregarColaboradores() {
+  const select = $('selectColaborador');
+  select.innerHTML = '<option value="">-- Selecione o funcionário --</option>';
+  if (!db) return;
+  try {
+    const snap = await getDocs(collection(db, "colaboradores"));
+    snap.forEach(docSnap => {
+      const c = docSnap.data();
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = `${c.nome} (${c.cargo})`;
+      select.appendChild(opt);
+    });
+  } catch (err) {}
+}
 
-function iniciais(n) {
-  const p = n.trim().split(/\s+/);
-  return ((p[0]?.[0] || "?") + (p.length > 1 ? p[p.length - 1][0] : "")).toUpperCase();
+async function iniciarListaPublica() {
+  if (!db) return;
+  try {
+    const snap = await getDocs(collection(db, "colaboradores"));
+    const select = $('selectColaborador');
+    snap.forEach(docSnap => {
+      const c = docSnap.data();
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = `${c.nome} (${c.cargo})`;
+      select.appendChild(opt);
+    });
+  } catch(e) {}
 }
-function renderColab() {
-  const tem = !!colab;
-  $("idView").classList.toggle("hidden", !tem);
-  $("idView").classList.toggle("flex", tem);
-  $("idForm").classList.toggle("hidden", tem);
-  if (tem) {
-    $("avatar").textContent = iniciais(colab.nome);
-    $("vNome").textContent = colab.nome;
-    $("vSub").textContent = colab.cargo || "Código: " + colab.id;
-  }
-  atualizar();
-}
-$("idForm").addEventListener("submit", e => {
+iniciarListaPublica();
+
+$("formCadastroFunc").addEventListener("submit", async e => {
   e.preventDefault();
-  colab = { id: $("fId").value.trim(), nome: $("fNome").value.trim(), cargo: $("fCargo").value.trim() };
-  try { localStorage.setItem("mg_colab", JSON.stringify(colab)); } catch {}
-  renderColab();
-});
-$("btnTrocar").addEventListener("click", () => {
-  colab = null;
-  try { localStorage.removeItem("mg_colab"); } catch {}
-  $("fId").value = $("fNome").value = $("fCargo").value = "";
-  renderColab();
+  if (!db) return;
+  const id = $('novoId').value.trim().toLowerCase().replace(/\s+/g, '_');
+  const nome = $('novoNome').value.trim();
+  const cargo = $('novoCargo').value.trim();
+
+  try {
+    await setDoc(doc(db, "colaboradores", id), { id, nome, cargo });
+    alert("Colaborador cadastrado com sucesso!");
+    $('formCadastroFunc').reset();
+    carregarColaboradores();
+  } catch (err) {
+    alert("Erro ao cadastrar colaborador.");
+  }
 });
 
-/* ---- Câmera ---- */
 let stream = null, foto = null;
-
 function camChip(txt, cls) {
-  $("camChip").textContent = txt;
-  $("camChip").className = "text-xs font-bold rounded-full px-2.5 py-1 " + cls;
+  $('camChip').textContent = txt;
+  $('camChip').className = "text-xs font-bold rounded-full px-2.5 py-1 " + cls;
 }
-function camErro(t) { $("camErr").textContent = t || ""; $("camErr").classList.toggle("hidden", !t); }
+function camErro(t) { $('camErr').textContent = t \vert{}\vert{} ""; $('camErr').classList.toggle("hidden", !t); }
 function pararCamera() { stream?.getTracks().forEach(t => t.stop()); stream = null; }
 
-$("btnCam").addEventListener("click", ativarCamera);
-async function ativarCamera() {
+$('btnCam').addEventListener("click", async () => {
   camErro("");
-  if (!navigator.mediaDevices?.getUserMedia) {
-    return camErro("Este navegador não permite usar a câmera (é preciso HTTPS).");
-  }
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 720 } }, audio: false });
-    $("video").srcObject = stream;
-    $("video").classList.remove("hidden");
-    $("camEmpty").classList.add("hidden");
-    $("btnCam").classList.add("hidden");
-    $("btnShot").classList.remove("hidden");
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 720 } }, audio: false });
+    $('video').srcObject = stream;
+    $('video').classList.remove("hidden");
+    $('camEmpty').classList.add("hidden");
+    $('btnCam').classList.add("hidden");
+    $('btnShot').classList.remove("hidden");
     camChip("Câmera ativa", "bg-blue-100 text-blue-800");
   } catch (err) {
-    camErro(err.name === "NotAllowedError"
-      ? "Permissão da câmera negada. Libere o acesso nas configurações do navegador e tente de novo."
-      : "Não foi possível abrir a câmera deste aparelho.");
+    camErro("Permissão de câmera negada ou indisponível.");
   }
-}
-$("btnShot").addEventListener("click", () => {
-  const v = $("video");
+});
+
+$('btnShot').addEventListener("click", () => {
+  const v = $('video');
   if (!v.videoWidth) return;
   const lado = Math.min(v.videoWidth, v.videoHeight), W = 320;
   const c = document.createElement("canvas");
   c.width = c.height = W;
   c.getContext("2d").drawImage(v, (v.videoWidth - lado) / 2, (v.videoHeight - lado) / 2, lado, lado, 0, 0, W, W);
   foto = c.toDataURL("image/jpeg", 0.6);
-  $("preview").src = foto;
-  $("preview").classList.remove("hidden");
-  $("video").classList.add("hidden");
+  $('preview').src = foto;
+  $('preview').classList.remove("hidden");
+  $('video').classList.add("hidden");
   pararCamera();
-  $("btnShot").classList.add("hidden");
-  $("btnRetake").classList.remove("hidden");
-  $("lens").classList.add("ok");
-  camChip("Foto capturada", "bg-green-100 text-green-800");
-  atualizar();
+  $('btnShot').classList.add("hidden");
+  $('btnRetake').classList.remove("hidden");
+  $('lens').classList.add("ok");
+  camChip("Foto validada", "bg-green-100 text-green-800");
+  atualizarBotoes();
 });
-$("btnRetake").addEventListener("click", () => { limparFoto(); ativarCamera(); });
-function limparFoto() {
+
+$('btnRetake').addEventListener("click", () => {
   foto = null;
-  $("preview").classList.add("hidden");
-  $("btnRetake").classList.add("hidden");
-  $("lens").classList.remove("ok");
+  $('preview').classList.add("hidden");
+  $('btnRetake').classList.add("hidden");
+  $('lens').classList.remove("ok");
   camChip("Câmera desligada", "bg-slate-100 text-slate-600");
-  atualizar();
-}
+  $('btnCam').click();
+  atualizarBotoes();
+});
 
-/* ---- GPS ---- */
-let gpsOk = false, watchId = null;
-function gpsUI(estado, titulo, sub) {
-  const cor = { ok: "bg-green-500", wait: "bg-amber-400", err: "bg-red-500" }[estado];
-  $("gpsDot").className = "h-3 w-3 rounded-full shrink-0 " + cor;
-  $("gpsTitle").textContent = titulo;
-  $("gpsSub").textContent = sub;
-  $("btnGps").classList.toggle("hidden", estado !== "err");
-  gpsOk = estado === "ok";
-  atualizar();
-}
-function erroGps(e) {
-  if (e.code === 1) return "Permissão de localização negada. Libere o acesso ao GPS no navegador.";
-  if (e.code === 2) return "Localização indisponível. Ative o GPS do aparelho.";
-  return "Tempo esgotado ao buscar o GPS. Vá para um local aberto e tente de novo.";
-}
+let gpsOk = false, ultimaPosicao = null;
 function iniciarGps() {
-  if (!navigator.geolocation) return gpsUI("err", "GPS indisponível", "Este navegador não tem geolocalização.");
-  gpsUI("wait", "GPS", "Buscando localização...");
-  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-  watchId = navigator.geolocation.watchPosition(
-    p => gpsUI("ok", "GPS ativo", "Precisão de ~" + Math.round(p.coords.accuracy) + " m"),
-    e => gpsUI("err", "GPS com problema", erroGps(e)),
-    { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 });
+  if (!navigator.geolocation) return;
+  navigator.geolocation.watchPosition(
+    p => {
+      gpsOk = true;
+      ultimaPosicao = p.coords;
+      $('gpsDot').className = "h-3 w-3 rounded-full bg-emerald-500 shrink-0";
+      $('gpsTitle').textContent = "GPS Ativo";
+      $('gpsSub').textContent = `Precisão de ~${Math.round(p.coords.accuracy)}m`;
+      atualizarBotoes();
+    },
+    e => {
+      gpsOk = false;
+      $('gpsDot').className = "h-3 w-3 rounded-full bg-rose-500 shrink-0";
+      $('gpsTitle').textContent = "GPS Indisponível";
+      $('gpsSub').textContent = "Ative a localização no aparelho";
+      $('btnGps').classList.remove("hidden");
+      atualizarBotoes();
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+  );
 }
-$("btnGps").addEventListener("click", iniciarGps);
+$('btnGps').addEventListener("click", iniciarGps);
+iniciarGps();
 
-const posicaoAgora = () => new Promise((res, rej) =>
-  navigator.geolocation.getCurrentPosition(res, rej,
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }));
+function atualizarBotoes() {
+  const colabSelecionado = $('selectColaborador').value;
+  const pronto = !!colabSelecionado && !!foto && gpsOk && configurado;
+  
+  $('btnEntrada').disabled = !pronto;
+  $('btnAlmoco').disabled = !pronto;
+  $('btnRetorno').disabled = !pronto;
+  $('btnSaida').disabled = !pronto;
 
-/* ---- Botões e registro ---- */
-let ocupado = false;
-function atualizar() {
-  const pronto = !!colab && !!foto && gpsOk && configurado && !ocupado;
-  $("btnIn").disabled = $("btnOut").disabled = !pronto;
-  $("hint").textContent = ocupado ? "" :
-    !colab ? "Informe quem está registrando." :
-    !foto ? "Tire a foto de validação para liberar os botões." :
-    !gpsOk ? "Aguardando o GPS ficar ativo." :
-    !configurado ? "Configure o Firebase para registrar." : "";
+  $('hint').textContent = !colabSelecionado ? "Selecione seu nome na lista para registrar." :
+    !foto ? "Tire a foto facial para liberar os botões." :
+    !gpsOk ? "Aguardando sinal do GPS..." : "";
 }
-const SPIN = '<svg class="spin h-6 w-6" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".3" stroke-width="3"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span>Registrando...</span>';
-const original = { In: $("btnIn").innerHTML, Out: $("btnOut").innerHTML };
+$('selectColaborador').addEventListener("change", atualizarBotoes);
 
-function mensagem(ok, texto) {
-  const m = $("msg");
-  m.textContent = texto;
-  m.className = "rounded-2xl p-4 text-sm font-bold " +
-    (ok ? "bg-green-100 text-green-900 border border-green-300" : "bg-red-100 text-red-900 border border-red-300");
-  m.scrollIntoView({ behavior: "smooth", block: "nearest" });
-}
+window.registrarPonto = async function(tipo) {
+  const select = $('selectColaborador');
+  const colaboradorId = select.value;
+  const colaboradorNome = select.options[select.selectedIndex].text;
 
-async function registrar(tipo, btn, chave) {
-  if (ocupado) return;
-  ocupado = true; atualizar();
-  btn.innerHTML = SPIN;
-  $("msg").className = "hidden";
+  if (!colaboradorId || !foto || !gpsOk) return;
+
+  const btnMap = { 'Entrada': 'btnEntrada', 'Saída Almoço': 'btnAlmoco', 'Retorno Almoço': 'btnRetorno', 'Saída': 'btnSaida' };
+  const btnEl = $(btnMap[tipo]);
+  const textoOriginal = btnEl.innerHTML;
+
+  btnEl.disabled = true;
+  btnEl.innerHTML = `<i class="fa-solid fa-spinner spin text-lg"></i> Salvando...`;
+
   try {
-    const pos = await posicaoAgora();
     await addDoc(collection(db, "pontos"), {
-      colaboradorId: colab.id,
-      nome: colab.nome,
+      colaboradorId,
+      nomeColaborador: colaboradorNome,
       tipo,
       timestamp: serverTimestamp(),
-      latitude: pos.coords.latitude,
-      longitude: pos.coords.longitude,
-      precisaoMetros: Math.round(pos.coords.accuracy),
+      latitude: ultimaPosicao.latitude,
+      longitude: ultimaPosicao.longitude,
+      precisao: Math.round(ultimaPosicao.accuracy),
       foto
     });
-    const hora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    mensagem(true, "✓ " + tipo + " registrada às " + hora + ". Bom trabalho, " + colab.nome.split(" ")[0] + "!");
-    $("last").textContent = "Último registro: " + tipo + " às " + hora;
-    limparFoto();
-  } catch (e) {
-    console.error(e);
-    mensagem(false, e.code && typeof e.code === "number"
-      ? erroGps(e)
-      : "Não foi possível gravar o ponto. Verifique a internet e tente de novo.");
-  } finally {
-    btn.innerHTML = original[chave];
-    ocupado = false; atualizar();
-  }
-}
-$("btnIn").addEventListener("click", () => registrar("Entrada", $("btnIn"), "In"));
-$("btnOut").addEventListener("click", () => registrar("Saída", $("btnOut"), "Out"));
 
-document.addEventListener("visibilitychange", () => { if (document.hidden) pararCamera(); });
-
-renderColab();
-iniciarGps();
-</script>
-</body>
-</html>
+    const msgBox = $('msg');
